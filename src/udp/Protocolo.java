@@ -54,14 +54,19 @@ public class Protocolo {
     //envia, espera retorno, tenta x vezes dps marca como erro
     public static DatagramPacket enviarEsperar(DatagramSocket socket, byte[] dados, SocketAddress destino,
             String esperado, Avisos avisos) throws IOException {
-        socket.setSoTimeout(TIMEOUT);
         for (int tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
             if (tentativa > 1) {
                 avisos.aviso("RETRANSMISSAO", "tentativa " + tentativa + "/" + TENTATIVAS + " esperando " + esperado);
             }
             enviar(socket, dados, destino);
+            long limite = System.currentTimeMillis() + TIMEOUT;
             try {
                 while (true) {
+                    long falta = limite - System.currentTimeMillis();
+                    if (falta <= 0) {
+                        throw new SocketTimeoutException();
+                    }
+                    socket.setSoTimeout((int) falta);
                     DatagramPacket resposta = new DatagramPacket(new byte[TAM_BUFFER], TAM_BUFFER);
                     socket.receive(resposta);
                     if (descartar()) {
